@@ -248,3 +248,28 @@ def apply_misconfiguration(df_merge, ratio=0.30):
 
     return df_merge
 
+
+def split_data(data, test_size=0.2):
+    """Splits data to training, validation and testing parts
+
+    Note: data is not shuffled to keep the time series for plotting
+    acceleration profiles
+
+    Parameters:
+    ----------
+    data : pandas.Dataframe
+        pandas dataframe object of the preprocessed data
+    test_size : float
+        portion of the data used as test data
+
+    Returns:
+    -------
+    df_train : pandas.Dataframe
+        pandas dataframe object containing training dataset
+    df_test : pandas.Dataframe
+        pandas dataframe object containing test dataset
+    """
+    n = int(len(data) * (1 - test_size))
+    df_train, df_test = data.iloc[:n], data.iloc[n:]
+    return df_train, df_test
+
