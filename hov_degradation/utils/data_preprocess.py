@@ -129,4 +129,33 @@ def get_neighbors(df_group_id):
     return neighbors
 
 
+def usable_stations(df_merge):
+    """ #TODO yf
+
+    Parameters
+    ----------
+    df_merge :
+        pandas dataframe
+
+    Return
+    ------
+    usable :
+
+    """
+    group = df_merge.groupby('ID')
+    num_times = len(df_merge['Timestamp'].unique())
+
+    # Find IDS that report Flow for more than half of the timestamps
+    fidx = group['Flow'].count() > (num_times / 2)
+
+    # Find IDS that report at least 5 samples per lane
+    sidx = group['Samples'].mean() / group.first()['Lanes'] > 5.0
+
+    # Find IDs that report mean observation > 50%
+    oidx = group['Observed'].mean() > 50
+
+    usable = fidx & sidx & oidx
+    return usable
+
+
 
