@@ -1,7 +1,5 @@
-*.csv
 *.zip
 /hov_degradation.egg-info
-/experiments/district_7/data
 __pycache__
 .idea
 .DS_Store
