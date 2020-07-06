@@ -25,6 +25,76 @@ FREEWAYS = {
 }
 
 
+def preprocess(df_data, df_meta):
+    """ #TODO yf
+
+    Parameters
+    ----------
+
+    Return
+    ------
+
+    """
+    # filter I-210, 134, and 605 stations
+    df_meta_filtered = pd.DataFrame(columns=df_meta.columns)
+    for fway, value in FREEWAYS.items():
+        fway_meta = df_meta[(df_meta['Fwy'] == fway) &
+                            (df_meta['Abs_PM'] >= value['range_min']) &
+                            (df_meta['Abs_PM'] <= value['range_max'])]
+        df_meta_filtered = pd.concat([df_meta_filtered, fway_meta], axis=0)
+
+    # filter, only keep HOV and mainline
+    df_meta_filtered = df_meta_filtered[df_meta_filtered.Type.isin(['ML',
+                                                                    'HV'])]
+
+    # merge using ID
+    df_merge = pd.merge(df_data, df_meta_filtered, how='inner',
+                        left_on='Station', right_on='ID')
+
+    # filter by usable stations
+    usable = usable_stations(df_merge)
+    df_merge = df_merge[df_merge.ID.isin(usable[usable].index)]
+
+    # apply misconfiguration, swap Flow and Occupancy of some HOVs with MLs
+    df_merge = apply_misconfiguration(df_merge=df_merge, ratio=0.30)
+
+    # get pivot based on Flow - Filter based on usable stations
+    df_flow_piv = df_merge.pivot('Timestamp', 'ID', 'Flow')
+    # df_flow_piv = df_flow_piv.loc[:, usable]
+
+    # normalize flow based on the number of lanes
+    df_group_id = df_merge.groupby('ID').first()
+    df_flow_piv /= df_group_id['Lanes'][df_flow_piv.columns]
+
+    # get pivot based on Occupancy - Filter based on usable stations
+    df_ocupancy_piv = df_merge.pivot('Timestamp', 'ID', 'Occupancy')
+    # df_ocupancy_piv = df_ocupancy_piv.loc[:, usable]
+
+    # get nighttime average
+    begin_time = "05/24/2020 01:00:00"  # datetime.datetime(2020,5,24,1,0,0)
+    end_time = "05/24/2020 03:00:00"  # datetime.datetime(2020,5,24,3,0,0)
+    avg_nighttime_flow = df_flow_piv.T.loc[:, begin_time:end_time].mean(axis=1)
+
+    # get K-S test value for downstream and upstream stations
+    neighbors = get_neighbors(df_group_id)
+    ks_stats_flow = get_ks_stats(df_flow_piv.T, neighbors)
+    ks_stats_occupancy = get_ks_stats(df_ocupancy_piv.T, neighbors)
+
+    clf_stations = df_flow_piv.T.index
+    processed_data = pd.DataFrame(
+        index=clf_stations,
+        data={'avg_nighttime_flow': avg_nighttime_flow,
+              'ks_flow_up': ks_stats_flow['up']['p-value'],
+              'ks_flow_down': ks_stats_flow['down']['p-value'],
+              'ks_occupancy_up': ks_stats_occupancy['up']['p-value'],
+              'ks_occupancy_down': ks_stats_occupancy['down']['p-value'],
+              'Type': df_group_id['Type'],
+              'y': df_group_id['misconfigured']
+              })
+
+    return processed_data
+
+
 def get_ks_stats(X, neighbors):
     """ #TODO yf
 
@@ -273,3 +343,11 @@ def split_data(data, test_size=0.2):
     df_train, df_test = data.iloc[:n], data.iloc[n:]
     return df_train, df_test
 
+
+if __name__ == '__main__':
+    path = "../../experiments/district_7/data/"
+    df_data = pd.read_csv(path + "station_5min_2020-05-24.csv")
+    df_meta = pd.read_csv(path + "meta_2020-05-23.csv")
+    data = preprocess(df_data, df_meta)
+    import ipdb; ipdb.set_trace()
+    print(data.head())
