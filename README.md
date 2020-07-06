@@ -6,7 +6,7 @@ Serves as the repository for HOV-degradation analysis
 * [Setup Instructions](#setup-instructions)
 
 ## Setup Instructions
-If you have not done so already, download the Flow github repository.
+If you have not done so already, download the hov-degradation github repository.
 
 ```bash
 git clone https://github.com/Yasharzf/hov-degradation.git
