@@ -62,4 +62,71 @@ def get_ks_stats(X, neighbors):
     return ks_stats
 
 
+def get_neighbors(df_group_id):
+    """ #TODO yf
+
+    Parameters
+    ----------
+    df_group_id :
+        pandas dataframe groupby object
+
+    Return
+    ------
+    neighbors : dict
+
+    """
+    # get freeway names
+    fwys = df_group_id.Fwy.unique()
+
+    # get freeway types
+    typs = df_group_id.Type.unique()
+
+    neighbors = {}
+    for fwy in fwys:
+        for typ in typs:
+            # find sorted ids
+            _ids = df_group_id[
+                (df_group_id['Fwy'] == fwy) &
+                (df_group_id['Type'] == typ)].sort_values(by='Abs_PM').index
+            for i, _id in enumerate(_ids):
+                neighbors[_id] = {'up': None,
+                                  'down': None,
+                                  'main': None,
+                                  'hov': None}
+                # set upstream neighbors
+                if i > 0:
+                    neighbors[_id].update({'up': _ids[i - 1]})
+
+                # set downstream neighbors
+                if i < len(_ids) - 1:
+                    neighbors[_id].update({'down': _ids[i + 1]})
+
+                # set mainline neighbor of the HOV at the same location
+                if typ == 'HV':
+                    try:
+                        main_neighbor_id = df_group_id[
+                            (df_group_id['Fwy'] == fwy) &
+                            (df_group_id['Type'] == 'ML') &
+                            (df_group_id['Abs_PM'] == df_group_id.loc[
+                                # FIXME set almost equal
+                                _id, 'Abs_PM'])].index[0]
+                        neighbors[_id].update({'main': main_neighbor_id})
+                    except:
+                        pass
+
+                # set HOV neighbor of the mainline at the same location
+                if typ == 'ML':
+                    try:
+                        hov_neighbor_id = df_group_id[
+                            (df_group_id['Fwy'] == fwy) &
+                            (df_group_id['Type'] == 'HV') &
+                            (df_group_id['Abs_PM'] == df_group_id.loc[
+                                # FIXME set almost equal
+                                _id, 'Abs_PM'])].index[0]
+                        neighbors[_id].update({'hov': hov_neighbor_id})
+                    except:
+                        pass
+    return neighbors
+
+
 
