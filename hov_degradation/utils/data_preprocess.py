@@ -158,4 +158,93 @@ def usable_stations(df_merge):
     return usable
 
 
+def apply_misconfiguration(df_merge, ratio=0.30):
+    """ #TODO yf
+
+    Parameters
+    ----------
+    data :
+        pandas dataframe
+
+    Return
+    ------
+    data :
+
+    """
+    # create new columns for swapped data, initialize based on ground truth
+    df_merge['misconfigured'] = 0
+    df_merge['swapped_lane_num'] = None
+
+    df_group_id = df_merge.groupby('ID').first()
+
+    # filter
+    hov_data = df_group_id[df_group_id.Type == 'HV']
+
+    # randomly select stations
+    np.random.seed(12345678)
+
+    misconfigured_inds = np.random.randint(low=0,
+                                           high=hov_data.shape[0],
+                                           size=int(hov_data.shape[0] * ratio))
+    misconfigured_ids = hov_data.iloc[misconfigured_inds].index
+
+    # assign label to misconfigured stations
+
+    # get neighbors
+    neighbors = get_neighbors(df_group_id)
+
+    # swap hov info (Flow and Occupancies) with a random lane in mainline
+    for _id in misconfigured_ids:
+        df_merge.loc[df_merge.ID == _id, 'misconfigured'] = 1
+
+        # get neighbor in mainline
+        neighbor_ml_id = neighbors[_id]['main']
+
+        # swap hov with a lane in mainline
+        if neighbor_ml_id is not None:
+            num_lanes = df_group_id['Lanes'][neighbor_ml_id]
+
+            # get the lane number of the mainline to be swapped with
+            if num_lanes > 1:
+                # get random lane
+                lane_num = np.random.randint(low=1,
+                                             high=num_lanes,
+                                             size=1)[0]
+            else:
+                lane_num = 1
+
+            df_merge.loc[df_merge.ID == _id, 'swapped_lane_num'] = lane_num
+
+            lane_cols = ['Lane {} Flow'.format(lane_num),
+                         'Lane {} Occupancy'.format(lane_num)]
+            total_cols = ['Flow', 'Occupancy']
+
+            # update total Flow of the mainline # TODO hov > 1 lanes, Fix else
+            df_merge.loc[df_merge.ID == neighbor_ml_id, 'Flow'] = \
+                df_merge.loc[df_merge.ID == neighbor_ml_id, 'Flow'].values + \
+                df_merge.loc[df_merge.ID == _id, 'Flow'].values - \
+                df_merge.loc[df_merge.ID == neighbor_ml_id, lane_cols[0]].values
+
+            # update total Occupancy of the mainline
+            df_merge.loc[df_merge.ID == neighbor_ml_id, 'Occupancy'] = \
+                df_merge.loc[df_merge.ID == neighbor_ml_id, 'Occupancy'].values \
+                + (df_merge.loc[df_merge.ID == _id, 'Occupancy'].values -
+                   df_merge.loc[df_merge.ID == neighbor_ml_id, lane_cols[
+                       1]].values) / num_lanes
+
+            # swap Flow of hov with the lane of mainline
+            df_merge.loc[df_merge.ID == _id, 'Flow'], \
+            df_merge.loc[df_merge.ID == neighbor_ml_id, lane_cols[0]] = \
+                df_merge.loc[
+                    df_merge.ID == neighbor_ml_id, lane_cols[0]].values, \
+                df_merge.loc[df_merge.ID == _id, 'Flow'].values
+
+            # swap Occupancy of hov with the lane of mainline
+            df_merge.loc[df_merge.ID == _id, 'Occupancy'], \
+            df_merge.loc[df_merge.ID == neighbor_ml_id, lane_cols[1]] = \
+                df_merge.loc[
+                    df_merge.ID == neighbor_ml_id, lane_cols[1]].values, \
+                df_merge.loc[df_merge.ID == _id, 'Occupancy'].values
+
+    return df_merge
 
