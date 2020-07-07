@@ -86,8 +86,14 @@ def preprocess(df_data, df_meta):
         data={'avg_nighttime_flow': avg_nighttime_flow,
               'ks_flow_up': ks_stats_flow['up']['p-value'],
               'ks_flow_down': ks_stats_flow['down']['p-value'],
+              'ks_flow_ml_up': ks_stats_flow['main_up']['p-value'],
+              'ks_flow_ml_down': ks_stats_flow['main_down']['p-value'],
+              'ks_flow_ml': ks_stats_flow['main']['p-value'],
               'ks_occupancy_up': ks_stats_occupancy['up']['p-value'],
               'ks_occupancy_down': ks_stats_occupancy['down']['p-value'],
+              'ks_occupancy_ml_up': ks_stats_occupancy['main_up']['p-value'],
+              'ks_occupancy_ml_down': ks_stats_occupancy['main_down']['p-value'],
+              'ks_occupancy_ml': ks_stats_occupancy['main']['p-value'],
               'Type': df_group_id['Type'],
               'y': df_group_id['misconfigured']
               })
@@ -114,6 +120,9 @@ def get_ks_stats(X, neighbors):
     """
     ks_down = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
     ks_up = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
+    ks_ml_down = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
+    ks_ml_up = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
+    ks_ml = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
 
     inds = X.index
 
@@ -128,7 +137,27 @@ def get_ks_stats(X, neighbors):
             ks_down.loc[ind, :] = ks_2samp(X.loc[ind].values, X_down.values)
         except:
             pass
-    ks_stats = {'up': ks_up, 'down': ks_down}
+        try:
+            X_ml_up = X.loc[neighbors[neighbors[ind]['up']]['main']]
+            ks_ml_up.loc[ind, :] = ks_2samp(X.loc[ind].values, X_ml_up.values)
+        except:
+            pass
+        try:
+            X_ml_down = X.loc[neighbors[neighbors[ind]['down']]['main']]
+            ks_ml_down.loc[ind, :] = ks_2samp(X.loc[ind].values, X_ml_down.values)
+        except:
+            pass
+        try:
+            X_ml = X.loc[neighbors[ind]['main']]
+            ks_ml.loc[ind, :] = ks_2samp(X.loc[ind].values, X_ml.values)
+        except:
+            pass
+
+    ks_stats = {'up': ks_up,
+                'down': ks_down,
+                'main_up': ks_ml_up,
+                'main_down': ks_ml_down,
+                'main': ks_ml}
     return ks_stats
 
 
