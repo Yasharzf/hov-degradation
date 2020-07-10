@@ -192,54 +192,60 @@ class PreProcess:
         # get freeway names
         fwys = df_group_id.Fwy.unique()
 
+        # get directions
+        dirs = df_group_id.Dir.unique()
+
         # get freeway types
         typs = df_group_id.Type.unique()
 
         neighbors = {}
         for fwy in fwys:
-            for typ in typs:
-                # find sorted ids
-                _ids = df_group_id[
-                    (df_group_id['Fwy'] == fwy) &
-                    (df_group_id['Type'] == typ)].sort_values(by='Abs_PM').index
-                for i, _id in enumerate(_ids):
-                    neighbors[_id] = {'up': None,
-                                      'down': None,
-                                      'main': None,
-                                      'hov': None}
-                    # set upstream neighbors
-                    if i > 0:
-                        neighbors[_id].update({'up': _ids[i - 1]})
+            for dir in dirs:
+                for typ in typs:
+                    # find sorted ids
+                    _ids = df_group_id[
+                        (df_group_id['Fwy'] == fwy) &
+                        (df_group_id['Dir'] == dir) &
+                        (df_group_id['Type'] == typ)].sort_values(by='Abs_PM'
+                                                                  ).index
+                    for i, _id in enumerate(_ids):
+                        neighbors[_id] = {'up': None,
+                                          'down': None,
+                                          'main': None,
+                                          'hov': None}
+                        # set upstream neighbors
+                        if i > 0:
+                            neighbors[_id].update({'up': _ids[i - 1]})
 
-                    # set downstream neighbors
-                    if i < len(_ids) - 1:
-                        neighbors[_id].update({'down': _ids[i + 1]})
+                        # set downstream neighbors
+                        if i < len(_ids) - 1:
+                            neighbors[_id].update({'down': _ids[i + 1]})
 
-                    # set mainline neighbor of the HOV at the same location
-                    if typ == 'HV':
-                        try:
-                            main_neighbor_id = df_group_id[
-                                (df_group_id['Fwy'] == fwy) &
-                                (df_group_id['Type'] == 'ML') &
-                                (df_group_id['Abs_PM'] == df_group_id.loc[
-                                    # FIXME set almost equal
-                                    _id, 'Abs_PM'])].index[0]
-                            neighbors[_id].update({'main': main_neighbor_id})
-                        except:
-                            pass
+                        # set mainline neighbor of the HOV at the same location
+                        if typ == 'HV':
+                            try:
+                                main_neighbor_id = df_group_id[
+                                    (df_group_id['Fwy'] == fwy) &
+                                    (df_group_id['Type'] == 'ML') &
+                                    (df_group_id['Abs_PM'] == df_group_id.loc[
+                                        # FIXME set almost equal
+                                        _id, 'Abs_PM'])].index[0]
+                                neighbors[_id].update({'main': main_neighbor_id})
+                            except:
+                                pass
 
-                    # set HOV neighbor of the mainline at the same location
-                    if typ == 'ML':
-                        try:
-                            hov_neighbor_id = df_group_id[
-                                (df_group_id['Fwy'] == fwy) &
-                                (df_group_id['Type'] == 'HV') &
-                                (df_group_id['Abs_PM'] == df_group_id.loc[
-                                    # FIXME set almost equal
-                                    _id, 'Abs_PM'])].index[0]
-                            neighbors[_id].update({'hov': hov_neighbor_id})
-                        except:
-                            pass
+                        # set HOV neighbor of the mainline at the same location
+                        if typ == 'ML':
+                            try:
+                                hov_neighbor_id = df_group_id[
+                                    (df_group_id['Fwy'] == fwy) &
+                                    (df_group_id['Type'] == 'HV') &
+                                    (df_group_id['Abs_PM'] == df_group_id.loc[
+                                        # FIXME set almost equal
+                                        _id, 'Abs_PM'])].index[0]
+                                neighbors[_id].update({'hov': hov_neighbor_id})
+                            except:
+                                pass
         return neighbors
 
     def usable_stations(self):
