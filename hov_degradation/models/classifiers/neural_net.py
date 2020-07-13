@@ -2,8 +2,6 @@
 
 import tensorflow as tf
 
-tf.compat.v1.disable_eager_execution()
-
 
 class FeedForwardClassifier:
     """Feed forward neural networks for classification.
@@ -14,19 +12,24 @@ class FeedForwardClassifier:
     """
 
     def __init__(self,
-                 xs,
-                 ys,
-                 xs_test,
-                 ys_test,
+                 x,
+                 y,
+                 x_test,
+                 y_test,
+                 num_layers,
+                 hidden_units,
+                 activation_fn,
                  epochs,
                  batch_size,
                  learning_rate,
                  target_ckpt):
-
-        self.xs = xs
-        self.ys = ys
-        self.xs_test = xs_test
-        self.ys_test = ys_test
+        self.x = x
+        self.y = y
+        self.x_test = x_test
+        self.y_test = y_test
+        self.num_layers = num_layers
+        self.hidden_units = hidden_units
+        self.activation_fn = activation_fn
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -37,14 +40,44 @@ class FeedForwardClassifier:
     def build_model(self):
         """
         """
-        tf.compat.v1.reset_default_graph()
-        self.model = None  # TODO yf
+        self.model = tf.keras.Sequential([
+            tf.keras.layers.BatchNormalization(input_shape=[self.x.shape[1:]]) +
+            [tf.keras.layers.Dense(self.hidden_units,
+                                   activation=self.activation_fn)
+             for _ in range(self.num_layers)] +
+            tf.keras.layers.Dense(1, activation='sigmoid')
+        ])
 
-    def compute_loss_mse(self):
-        return tf.reduce_mean(tf.square(self.outputs - self.labels_ph))
+        optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+
+        self.model.compile(loss='binary_crossentropy',
+                           optimizer=optimizer,
+                           metrics=[tf.keras.metrics.Recall(),
+                                    tf.keras.metrics.Precision()])
+        return self.model
 
     def train(self):
         """
         """
-        # TODO yf
-        pass
+        # Create checkpoint callback
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(self.target_ckpt,
+                                                         save_weights_only=True,
+                                                         verbose=1)
+        history = self.model.fit(x=self.x,
+                                 y=self.y,
+                                 batch_size=self.batch_size,
+                                 epochs=self.epochs,
+                                 verbose=1,
+                                 callbacks=cp_callback,
+                                 validation_data=(self.x_test, self.y_test)
+                                 )
+        return history
+
+    def predict(self, xs):
+        return self.model.predict(xs)
+
+    def load_weights(self, path):
+        return self.model.load_weights(path)
+
+    def evaluate(self, xs, ys):
+        return self.model.evaluate(xs, ys)
