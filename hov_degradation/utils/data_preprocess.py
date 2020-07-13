@@ -32,6 +32,7 @@ class PreProcess:
     ----------
     # TODO
     """
+
     def __init__(self, df_data, df_meta):
         """
         # TODO
@@ -66,11 +67,12 @@ class PreProcess:
 
         # merge using ID
         self.df_merge = pd.merge(self.df_data, df_meta_filtered, how='inner',
-                            left_on='Station', right_on='ID')
+                                 left_on='Station', right_on='ID')
 
         # filter by usable stations
         usable = self.usable_stations()
-        self.df_merge = self.df_merge[self.df_merge.ID.isin(usable[usable].index)]
+        self.df_merge = self.df_merge[
+            self.df_merge.ID.isin(usable[usable].index)]
 
         # apply misconfiguration, swap Flow and Occupancy of some HOVs with MLs
         self.apply_misconfiguration(ratio=0.30)
@@ -90,7 +92,8 @@ class PreProcess:
         # get nighttime average
         begin_time = "05/24/2020 01:00:00"  # datetime.datetime(2020,5,24,1,0,0)
         end_time = "05/24/2020 03:00:00"  # datetime.datetime(2020,5,24,3,0,0)
-        avg_nighttime_flow = df_flow_piv.T.loc[:, begin_time:end_time].mean(axis=1)
+        avg_nighttime_flow = df_flow_piv.T.loc[:, begin_time:end_time].mean(
+            axis=1)
 
         # get K-S test value for downstream and upstream stations
         neighbors = self.get_neighbors(df_group_id)
@@ -111,12 +114,17 @@ class PreProcess:
                   'ks_flow_ml': ks_stats_flow['main']['p-value'],
                   'ks_occupancy_up': ks_stats_occupancy['up']['p-value'],
                   'ks_occupancy_down': ks_stats_occupancy['down']['p-value'],
-                  'ks_occupancy_ml_up': ks_stats_occupancy['main_up']['p-value'],
-                  'ks_occupancy_ml_down': ks_stats_occupancy['main_down']['p-value'],
+                  'ks_occupancy_ml_up': ks_stats_occupancy['main_up'][
+                      'p-value'],
+                  'ks_occupancy_ml_down': ks_stats_occupancy['main_down'][
+                      'p-value'],
                   'ks_occupancy_ml': ks_stats_occupancy['main']['p-value'],
                   'Type': df_group_id['Type'],
                   'y': df_group_id['misconfigured']
                   })
+        # filter only HOV, for now
+        self.processed_data = self.processed_data[
+            self.processed_data.Type == 'HV']
 
         # split test and train
         df_train, df_test = self.split_data(self.processed_data)
@@ -142,7 +150,8 @@ class PreProcess:
         """
         ks_down = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
         ks_up = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
-        ks_ml_down = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
+        ks_ml_down = pd.DataFrame(index=X.index,
+                                  columns=['statistic', 'p-value'])
         ks_ml_up = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
         ks_ml = pd.DataFrame(index=X.index, columns=['statistic', 'p-value'])
 
@@ -152,27 +161,29 @@ class PreProcess:
             try:
                 X_up = X.loc[neighbors[ind]['up']]
                 ks_up.loc[ind, :] = ks_2samp(X.loc[ind].values, X_up.values)
-            except:
+            except KeyError:
                 pass
             try:
                 X_down = X.loc[neighbors[ind]['down']]
                 ks_down.loc[ind, :] = ks_2samp(X.loc[ind].values, X_down.values)
-            except:
+            except KeyError:
                 pass
             try:
                 X_ml_up = X.loc[neighbors[neighbors[ind]['up']]['main']]
-                ks_ml_up.loc[ind, :] = ks_2samp(X.loc[ind].values, X_ml_up.values)
-            except:
+                ks_ml_up.loc[ind, :] = ks_2samp(X.loc[ind].values,
+                                                X_ml_up.values)
+            except KeyError:
                 pass
             try:
                 X_ml_down = X.loc[neighbors[neighbors[ind]['down']]['main']]
-                ks_ml_down.loc[ind, :] = ks_2samp(X.loc[ind].values, X_ml_down.values)
-            except:
+                ks_ml_down.loc[ind, :] = ks_2samp(X.loc[ind].values,
+                                                  X_ml_down.values)
+            except KeyError:
                 pass
             try:
                 X_ml = X.loc[neighbors[ind]['main']]
                 ks_ml.loc[ind, :] = ks_2samp(X.loc[ind].values, X_ml.values)
-            except:
+            except KeyError:
                 pass
 
         ks_stats = {'up': ks_up,
@@ -236,8 +247,9 @@ class PreProcess:
                                     (df_group_id['Abs_PM'] == df_group_id.loc[
                                         # FIXME set almost equal
                                         _id, 'Abs_PM'])].index[0]
-                                neighbors[_id].update({'main': main_neighbor_id})
-                            except:
+                                neighbors[_id].update(
+                                    {'main': main_neighbor_id})
+                            except IndexError:
                                 pass
 
                         # set HOV neighbor of the mainline at the same location
@@ -250,7 +262,7 @@ class PreProcess:
                                         # FIXME set almost equal
                                         _id, 'Abs_PM'])].index[0]
                                 neighbors[_id].update({'hov': hov_neighbor_id})
-                            except:
+                            except IndexError:
                                 pass
         return neighbors
 
@@ -304,7 +316,8 @@ class PreProcess:
 
         misconfigured_inds = np.random.randint(low=0,
                                                high=hov_data.shape[0],
-                                               size=int(hov_data.shape[0] * ratio))
+                                               size=int(
+                                                   hov_data.shape[0] * ratio))
         misconfigured_ids = hov_data.iloc[misconfigured_inds].index
 
         # assign label to misconfigured stations
@@ -332,7 +345,8 @@ class PreProcess:
                 else:
                     lane_num = 1
 
-                self.df_merge.loc[self.df_merge.ID == _id, 'swapped_lane_num'] = lane_num
+                self.df_merge.loc[
+                    self.df_merge.ID == _id, 'swapped_lane_num'] = lane_num
 
                 lane_cols = ['Lane {} Flow'.format(lane_num),
                              'Lane {} Occupancy'.format(lane_num)]
@@ -340,30 +354,41 @@ class PreProcess:
 
                 # update total Flow of the mainline # TODO hov > 1 lanes, Fix else
                 self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, 'Flow'] = \
-                    self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, 'Flow'].values + \
+                    self.df_merge.loc[
+                        self.df_merge.ID == neighbor_ml_id, 'Flow'].values + \
                     self.df_merge.loc[self.df_merge.ID == _id, 'Flow'].values - \
-                    self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, lane_cols[0]].values
+                    self.df_merge.loc[
+                        self.df_merge.ID == neighbor_ml_id, lane_cols[0]].values
 
                 # update total Occupancy of the mainline
-                self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, 'Occupancy'] = \
-                    self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, 'Occupancy'].values \
-                    + (self.df_merge.loc[self.df_merge.ID == _id, 'Occupancy'].values -
-                       self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, lane_cols[
-                           1]].values) / num_lanes
+                self.df_merge.loc[
+                    self.df_merge.ID == neighbor_ml_id, 'Occupancy'] = \
+                    self.df_merge.loc[
+                        self.df_merge.ID == neighbor_ml_id, 'Occupancy'].values \
+                    + (self.df_merge.loc[
+                           self.df_merge.ID == _id, 'Occupancy'].values -
+                       self.df_merge.loc[
+                           self.df_merge.ID == neighbor_ml_id, lane_cols[
+                               1]].values) / num_lanes
 
                 # swap Flow of hov with the lane of mainline
                 self.df_merge.loc[self.df_merge.ID == _id, 'Flow'], \
-                self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, lane_cols[0]] = \
+                self.df_merge.loc[
+                    self.df_merge.ID == neighbor_ml_id, lane_cols[0]] = \
                     self.df_merge.loc[
-                        self.df_merge.ID == neighbor_ml_id, lane_cols[0]].values, \
+                        self.df_merge.ID == neighbor_ml_id, lane_cols[
+                            0]].values, \
                     self.df_merge.loc[self.df_merge.ID == _id, 'Flow'].values
 
                 # swap Occupancy of hov with the lane of mainline
                 self.df_merge.loc[self.df_merge.ID == _id, 'Occupancy'], \
-                self.df_merge.loc[self.df_merge.ID == neighbor_ml_id, lane_cols[1]] = \
+                self.df_merge.loc[
+                    self.df_merge.ID == neighbor_ml_id, lane_cols[1]] = \
                     self.df_merge.loc[
-                        self.df_merge.ID == neighbor_ml_id, lane_cols[1]].values, \
-                    self.df_merge.loc[self.df_merge.ID == _id, 'Occupancy'].values
+                        self.df_merge.ID == neighbor_ml_id, lane_cols[
+                            1]].values, \
+                    self.df_merge.loc[
+                        self.df_merge.ID == _id, 'Occupancy'].values
 
     def split_data(self, data, test_size=0.3, shuffle=True):
         """Splits data to training, validation and testing parts
@@ -401,5 +426,5 @@ if __name__ == '__main__':
     df_meta = pd.read_csv(path + "meta_2020-05-23.csv")
     data = PreProcess(df_data, df_meta)
     df_train, df_test = data.preprocess()
-    import ipdb; ipdb.set_trace()
-    print(df_train.head())
+    df_train.to_csv(path[:-5] + "processed_train.csv")
+    df_test.to_csv(path[:-5] + "processed_test.csv")
