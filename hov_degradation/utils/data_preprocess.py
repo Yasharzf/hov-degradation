@@ -97,9 +97,12 @@ class PreProcess:
         ks_stats_flow = self.get_ks_stats(df_flow_piv.T, neighbors)
         ks_stats_occupancy = self.get_ks_stats(df_ocupancy_piv.T, neighbors)
 
-        clf_stations = df_flow_piv.T.index
+        # get IDs of the stations sorted by distance
+        sorted_stations = self.df_merge.sort_values(
+            by=['Fwy', 'Dir', 'Abs_PM']).ID.unique()
+
         self.processed_data = pd.DataFrame(
-            index=clf_stations,
+            index=sorted_stations,
             data={'avg_nighttime_flow': avg_nighttime_flow,
                   'ks_flow_up': ks_stats_flow['up']['p-value'],
                   'ks_flow_down': ks_stats_flow['down']['p-value'],
@@ -115,7 +118,10 @@ class PreProcess:
                   'y': df_group_id['misconfigured']
                   })
 
-        return self.processed_data
+        # split test and train
+        df_train, df_test = self.split_data(self.processed_data)
+
+        return df_train, df_test
 
     def get_ks_stats(self, X, neighbors):
         """ #TODO yf
@@ -359,7 +365,7 @@ class PreProcess:
                         self.df_merge.ID == neighbor_ml_id, lane_cols[1]].values, \
                     self.df_merge.loc[self.df_merge.ID == _id, 'Occupancy'].values
 
-    def split_data(self, data, test_size=0.2):
+    def split_data(self, data, test_size=0.3, shuffle=True):
         """Splits data to training, validation and testing parts
 
         Note: data is not shuffled to keep the time series for plotting
@@ -371,6 +377,8 @@ class PreProcess:
             pandas dataframe object of the preprocessed data
         test_size : float
             portion of the data used as test data
+        shuffle : bool
+            boolean, if true, will randomly shuffle the data
 
         Returns:
         -------
@@ -379,6 +387,9 @@ class PreProcess:
         df_test : pandas.Dataframe
             pandas dataframe object containing test dataset
         """
+        if shuffle:
+            data.sample(frac=1)
+
         n = int(len(data) * (1 - test_size))
         df_train, df_test = data.iloc[:n], data.iloc[n:]
         return df_train, df_test
@@ -389,6 +400,6 @@ if __name__ == '__main__':
     df_data = pd.read_csv(path + "station_5min_2020-05-24.csv")
     df_meta = pd.read_csv(path + "meta_2020-05-23.csv")
     data = PreProcess(df_data, df_meta)
-    processed_data = data.preprocess()
+    df_train, df_test = data.preprocess()
     import ipdb; ipdb.set_trace()
-    print(data.head())
+    print(df_train.head())
