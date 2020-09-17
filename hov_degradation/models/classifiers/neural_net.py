@@ -41,11 +41,24 @@ class FeedForwardClassifier:
         """
         """
         self.model = tf.keras.Sequential([
-            tf.keras.layers.BatchNormalization(input_shape=[self.x.shape[1:]]) +
-            [tf.keras.layers.Dense(self.hidden_units,
-                                   activation=self.activation_fn)
-             for _ in range(self.num_layers)] +
-            tf.keras.layers.Dense(1, activation='sigmoid')
+            tf.keras.layers.BatchNormalization(input_shape=self.x.shape[1:]),
+            tf.keras.layers.Dense(self.hidden_units,
+                                  activation=self.activation_fn,
+                                  input_shape=self.x.shape[1:],
+                                  ),
+            # tf.keras.layers.Dropout(rate=0.5),
+            # tf.keras.layers.Dense(self.hidden_units,
+            #                       activation=self.activation_fn),
+            tf.keras.layers.Dropout(rate=0.5),
+            tf.keras.layers.Dense(self.hidden_units,
+                                  activation=self.activation_fn,
+                                  kernel_regularizer=tf.keras.regularizers.l1(0.01)
+                                  ),
+            tf.keras.layers.Dropout(rate=0.5),
+
+            tf.keras.layers.Dense(1,
+                                  activation=tf.keras.activations.sigmoid,
+                                  kernel_regularizer=tf.keras.regularizers.l2(0.01),)
         ])
 
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
@@ -53,7 +66,8 @@ class FeedForwardClassifier:
         self.model.compile(loss='binary_crossentropy',
                            optimizer=optimizer,
                            metrics=[tf.keras.metrics.Recall(),
-                                    tf.keras.metrics.Precision()])
+                                    tf.keras.metrics.Precision(),
+                                    tf.keras.metrics.Accuracy()])
         return self.model
 
     def train(self):
@@ -68,7 +82,7 @@ class FeedForwardClassifier:
                                  batch_size=self.batch_size,
                                  epochs=self.epochs,
                                  verbose=1,
-                                 callbacks=cp_callback,
+                                 # callbacks=cp_callback,
                                  validation_data=(self.x_test, self.y_test)
                                  )
         return history
