@@ -1,25 +1,22 @@
 """Script for plotting the results"""
-import numpy as np
-import pandas as pd
-import json
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import os
 
 
-if __name__ == '__main__':
-    # load data
-    path = "../../experiments/district_7/"
-    with open(path + "neighbors_D7.json") as f:
-        neighbors = json.load(f)
-    df_data = pd.read_csv(path + "data/station_5min_2020-05-24.csv")
-    df_meta = pd.read_csv(path + "data/meta_2020-05-23.csv")
+def save_plots(df_data, df_meta, neighbors, misconfig_ids, path):
+    """
 
+    Parameters
+    ----------
+    df_data :
+    df_meta :
+    neighbors :
+    misconfig_ids :
+    path :
 
-    train_data = pd.read_csv(path + "prdictions_D7_train.csv", index_col=0)
-    test_data = pd.read_csv(path + "prdictions_D7_test.csv", index_col=0)
-    misconfig_ids = list(train_data[train_data['preds'] == 1].index) + list(test_data[test_data['preds'] == 1].index)
-
+    Returns
+    -------
+    """
     for misconfig_id in misconfig_ids:
         # neighbors
         up_neighbor = neighbors[str(misconfig_id)]['up']
@@ -36,7 +33,7 @@ if __name__ == '__main__':
         _df_main = df_data[df_data['Station'] == main_neighbor]
 
         # create output directory
-        outdir = path + "results/{}".format(misconfig_id)
+        outdir = path + "/{}".format(misconfig_id)
         if not os.path.exists(outdir):
             os.makedirs(outdir)
 
@@ -80,7 +77,7 @@ if __name__ == '__main__':
         plt.plot(_df['Timestamp'], _df['Flow'],
                  label='HOV')
         plt.subplot(212)
-        plt.title("Mainline: ".format(main_neighbor))
+        plt.title("Mainline: {}".format(main_neighbor))
         plt.xlabel('Time')
         plt.xticks([])
         for n in range(1, main_num_lanes + 1):
